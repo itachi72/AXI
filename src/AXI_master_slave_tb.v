@@ -75,7 +75,15 @@ module axi_master_slave_tb();
         // Read data channel
         .data_read(data_read),
         .R_VALID(R_VALID),
-        .R_READY(R_READY)
+        .R_READY(R_READY),
+        .write_address(write_address),
+        .AW_VALID(AW_VALID),
+        .AW_READY(AW_READY),
+        .write_data(data_write),
+        .W_VALID(W_VALID),
+        .W_READY(W_READY),
+        .B_VALID(B_VALID),
+        .B_READY(B_READY)
     );
 
     // Clock generation - 100MHz
@@ -101,16 +109,23 @@ module axi_master_slave_tb();
         // Test case 1: Write operation
         #100;
         rst = 0;
-        #100;
+        #10;
         read = 1;
         address_to_read = 4'h5;
-        #20;
+        #10;
         read = 0;
+        #30;
         write = 1;
         address_to_write = 4'h5;
-        data_to_write = 8'hAA;
-        #20;
+        #10;
         write = 0;
+        data_to_write = 8'hAA;
+        #40;
+        read = 1;
+        address_to_read = 4'h5;
+        #10;
+        read = 0;
+        #30;
 
     #100;
         $finish;
