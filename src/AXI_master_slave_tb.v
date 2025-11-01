@@ -110,22 +110,23 @@ module axi_master_slave_tb();
         #100;
         rst = 0;
         #10;
-        read = 1;
-        address_to_read = 4'h5;
+        read = 1;       // Setting read to initiate the read operation
         #10;
         read = 0;
-        #30;
-        write = 1;
-        address_to_write = 4'h5;
-        #10;
+        address_to_read = 4'h6; // Send address
+        #10;                    // one clock cycle wait,
+        write = 1;              // Immediately start write operation
+        #10;                    // one clock cycle wait,
         write = 0;
+        address_to_write = 4'h6;
+        #10;                    // one clock cycle wait for sending data
         data_to_write = 8'hAA;
-        #40;
+        #10;
         read = 1;
-        address_to_read = 4'h5;
         #10;
         read = 0;
-        #30;
+        address_to_read = 4'h6;
+        #30;             // Wait for some time to observe the read data
 
     #100;
         $finish;
