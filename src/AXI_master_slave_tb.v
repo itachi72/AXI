@@ -31,6 +31,7 @@ module axi_master_slave_tb();
     wire W_READY;
     wire B_VALID;
     wire B_READY;
+    wire [3:0] BRESPONSE;
 
     // Instantiate AXI Master
     AXI_Master master (
@@ -54,6 +55,7 @@ module axi_master_slave_tb();
         .W_READY(W_READY),
         // Write response channel
         .B_VALID(B_VALID),
+        .BRESPONSE(BRESPONSE),
         .B_READY(B_READY),
         // External interface
         .read(read),
@@ -83,6 +85,7 @@ module axi_master_slave_tb();
         .W_VALID(W_VALID),
         .W_READY(W_READY),
         .B_VALID(B_VALID),
+        .BRESPONSE(BRESPONSE),
         .B_READY(B_READY)
     );
 
@@ -111,21 +114,18 @@ module axi_master_slave_tb();
         rst = 0;
         #10;
         read = 1;       // Setting read to initiate the read operation
-        #10;
-        read = 0;
         address_to_read = 4'h6; // Send address
         #10;                    // one clock cycle wait,
+        read = 0;
         write = 1;              // Immediately start write operation
-        #10;                    // one clock cycle wait,
-        write = 0;
         address_to_write = 4'h6;
-        #10;                    // one clock cycle wait for sending data
         data_to_write = 8'hAA;
         #10;
+        write = 0;
         read = 1;
+        address_to_read = 4'h6;
         #10;
         read = 0;
-        address_to_read = 4'h6;
         #30;             // Wait for some time to observe the read data
 
     #100;

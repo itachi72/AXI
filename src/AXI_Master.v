@@ -21,6 +21,7 @@ module AXI_Master (
     input W_READY,
     /* ----- Write response from slave ------- */
     input B_VALID,
+    input [3:0] BRESPONSE,
     output reg B_READY, // When master is ready to accept write response
     
     /* External interface for writing, reading data to and from slave */
@@ -30,110 +31,106 @@ module AXI_Master (
     input [3:0] address_to_read,
     input [3:0] address_to_write,
     input [7:0] data_to_write,
-    output reg [7:0] data_being_read
+    output reg [7:0] data_being_read,
+    output reg [3:0] response_code
 );
 
+    parameter IDLE_READ = 4'b0001;
+    parameter IDLE_WRITE = 4'b0010;
+    parameter data_read_state = 4'b0100;
+    parameter write_response = 4'b1000;
 
-    parameter reset_read = 6'b000000;
-    parameter reset_write = 6'b000001;
-    parameter address_read_state = 6'b000010;
-    parameter data_read_state = 6'b000100;
-    parameter address_for_write = 6'b001000;
-    parameter data_for_write = 6'b010000;
-    parameter write_response = 6'b100000;
+    reg [3:0] state_read;
+    reg [3:0] state_write;
+
+    // AXI has 5 independent channels. So FSM not a good idea.
+    // Each channel should be handled independently.
 
 
-    reg [5:0] state_read;
-    reg [5:0] state_write;
-
-    always@(posedge clk or rst) begin
+    // The send address channel
+    // Signals: read_address, AR_VALID
+    always@(posedge clk) begin
         if (rst) begin
             /* Reset all signals */
-            state_read <= reset_read;
             read_address <= 4'b0;
             AR_VALID <= 1'b0;
-            R_READY <= 1'b0;
-            data_being_read <= 8'b0;
         end else begin
-            case(state_read)
-                reset_read: begin
-                    if (read) begin
-                        state_read <= address_read_state;
-                    end else begin
-                        state_read <= reset_read;
-                    end
-                end
-                address_read_state: begin
-                    AR_VALID <= 1'b1; // Indicate valid read address
-                    read_address <= address_to_read;
-                    data_being_read <= 0; // Reset the read data before new read
-                    state_read <= AR_READY ? data_read_state : address_read_state;
-                end
-                data_read_state: begin
-                    AR_VALID <= 1'b0; // Reset after address is accepted
-                    read_address <= 0; // Reset the read address after accepted
-                    R_READY <= 1'b1; // Now suggest that ready to receive data
-                    data_being_read <= data_read; // Capture the read data
-                    if (read) begin
-                        state_read <= address_read_state;
-                    end begin
-                        state_read <= reset_read;
-                    end
-                end
-            endcase
+            if (read) begin
+                AR_VALID <= 1'b1; // Indicate valid read address
+                read_address <= address_to_read;
+            end else begin
+                AR_VALID <= AR_READY ? 1'b0 : AR_VALID; // Keep the same value while AR_READY has not come yet
+                read_address <= AR_READY ? 0 : read_address;
+            end
         end
     end
 
-    /* The write FSM */
+    // The data read channel
+    // Signals: R_READY, data_being_read
+    always@(posedge clk) begin
+        if (rst) begin
+            R_READY <= 1'b0;
+            data_being_read <= 8'b0;
+        end else begin
+            if(R_VALID) begin
+                R_READY <= 1'b0; // Reset ready after data is accepted
+                data_being_read <= data_read; // Capture the read data
+            end else begin
+                R_READY <= 1'b1; // Always ready to read some data
+                data_being_read <= 0;
+            end
+        end
+    end
 
-    always@(posedge clk or rst) begin
+    // The write address and write data (two channels handled together)
+    // Signals: write_address, AW_VALID, data_write, W_VALID
+    always@(posedge clk) begin
         if (rst) begin
             /* Reset all signals */
-            state_write <= reset_write;
-            write_address <= 4'b0;
             AW_VALID <= 1'b0;
-            data_write <= 8'b0;
             W_VALID <= 1'b0;
-            B_READY <= 1'b0;
+            write_address <= 0;
+            data_write <= 0;
         end else begin
-            case(state_write)
-                reset_write: begin
-                    AW_VALID <= 1'b0; // Resetting the address valid signal
-                    W_VALID <= 1'b0; // Reset write valid
-                    B_READY <= 1'b0; // Resetting the response ready signal
-                    write_address <= 0; // Reset write address
-                    data_write <= 0; // Reset data to write
-                    if (write) begin
-                        state_write <= address_for_write;
-                    end else begin
-                        state_write <= reset_write;
-                    end
+            if (write) begin
+                /* Send address and data along with AW_VALID and W_VALID to slave */
+                AW_VALID <= 1'b1; // Indicate valid write address
+                write_address <= address_to_write; // send this address to AXI slave
+                W_VALID <= 1'b1; // Now indicate valid data to write
+                data_write <= data_to_write; // Capture the data to be written
+            end else begin
+                AW_VALID <= AW_READY ? 1'b0 : AW_VALID; // Keep the same value while AW_READY has not come yet
+                write_address <= AW_READY ? 0 : write_address;
+                W_VALID <= W_READY ? 1'b0 : W_VALID; // Keep the same value while W_READY has not come yet
+                data_write <= W_READY ? 0 : data_write;
+            end
+        end
+    end
+
+    // The write response channel. Active only if write is done
+    // Signals: B_READY, BRESPONSE
+    always@(posedge clk) begin
+        if (rst) begin
+            /* Reset all signals */
+            B_READY <= 1'b1;
+            response_code <= 4'b0;
+        end else begin
+            if(write) begin
+                // If continuous writes happen, keep B_READY high (reset value is 1 so taken care of)
+                if(B_VALID) begin // If previous transation response is there
+                    response_code <= BRESPONSE; // Capture the response code
+                end else begin
+                    response_code <= 0; // Suggesting that ready to accept the response now
                 end
-                address_for_write: begin
-                    AW_VALID <= 1'b1; // Indicate valid write address
-                    B_READY <= 1'b0; // Resetting the response ready signal
-                    write_address <= address_to_write; // send this address to AXI slave
-                    data_write <= 0; // Reset the data to be written before new write
-                    state_write <= AW_READY ? data_for_write : address_for_write;
+            end else begin
+                if(B_VALID) begin // If previous transation response is there
+                    B_READY <= 1'b0; // Now last write in a way is done, so accept the response once
+                    response_code <= BRESPONSE; // Capture the response code// Now last write in a way is done, so accept the response once
+                end else begin
+                    B_READY <= 1; // Keep B_READY high till it doesnt get any response
+                    response_code <= 0; // Clear response after accepted
                 end
-                data_for_write: begin
-                    AW_VALID <= 1'b0; // Indicate valid write address
-                    W_VALID <= 1'b1; // Now indicate valid data to write
-                    write_address <= 0; // Reset the address after accepted
-                    data_write <= data_to_write; // Capture the data to be written
-                    state_write <= W_READY ? write_response : data_for_write;
-                end
-                write_response: begin
-                    W_VALID <= 1'b0; // Now indicate valid data to write
-                    data_write <= 0; // Reset the data to be written
-                    B_READY <= 1'b1; // Suggesting that ready to accept the response now
-                    if(B_VALID) begin
-                        state_write <= write ? address_for_write : reset_write;
-                    end else begin
-                        state_write <= write_response;
-                    end 
-                end
-            endcase
+            end
         end
     end
 endmodule
