@@ -1,22 +1,24 @@
 /* This is the AXI master for AXI Lite */
 
+`include "axi_params.vh"
+
 module AXI_Master (
     input clk,
     input rst,
     /* ----- Address to be given to slave ------- */
-    output reg [3:0] read_address, // 4-bit read address
+    output reg [`ADDR_RANGE] read_address, // read address
     output reg AR_VALID,
     input AR_READY,
     /* ----- Data being read from slave ------- */
-    input [7:0] data_read,    // 8-bit data read
+    input [`DATA_RANGE] data_read,    // data read
     input R_VALID,
     output reg R_READY, // When master is ready to accept data
     /* ----- Address to be given to slave for write ------- */
-    output reg [3:0] write_address, // 4-bit write address
+    output reg [`ADDR_RANGE] write_address, // write address
     output reg AW_VALID,
     input AW_READY,
     /* ----- Data to be written to slave ------- */
-    output reg [7:0] data_write,    // 8-bit data to write
+    output reg [`DATA_RANGE] data_write,    // data to write
     output reg W_VALID,
     input W_READY,
     /* ----- Write response from slave ------- */
@@ -28,10 +30,10 @@ module AXI_Master (
     /* For now all are just a single tick, i.e AXI Lite like */
     input read,
     input write,
-    input [3:0] address_to_read,
-    input [3:0] address_to_write,
-    input [7:0] data_to_write,
-    output reg [7:0] data_being_read,
+    input [`ADDR_RANGE] address_to_read,
+    input [`ADDR_RANGE] address_to_write,
+    input [`DATA_RANGE] data_to_write,
+    output reg [`DATA_RANGE] data_being_read,
     output reg [3:0] response_code
 );
 

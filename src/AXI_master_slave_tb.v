@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+`include "axi_params.vh"
 `include "AXI_Master.v"
 `include "AXI_Slave.v"
 
@@ -11,22 +12,22 @@ module axi_master_slave_tb();
     // External interface signals for master
     reg read;
     reg write;
-    reg [3:0] address_to_read;
-    reg [3:0] address_to_write;
-    reg [7:0] data_to_write;
-    wire [7:0] data_being_read;
+    reg [`ADDR_RANGE] address_to_read;
+    reg [`ADDR_RANGE] address_to_write;
+    reg [`DATA_RANGE] data_to_write;
+    wire [`DATA_RANGE] data_being_read;
 
     // Interconnect signals between master and slave
-    wire [3:0] read_address;
+    wire [`ADDR_RANGE] read_address;
     wire AR_VALID;
     wire AR_READY;
-    wire [7:0] data_read;
+    wire [`DATA_RANGE] data_read;
     wire R_VALID;
     wire R_READY;
-    wire [3:0] write_address;
+    wire [`ADDR_RANGE] write_address;
     wire AW_VALID;
     wire AW_READY;
-    wire [7:0] data_write;
+    wire [`DATA_RANGE] data_write;
     wire W_VALID;
     wire W_READY;
     wire B_VALID;

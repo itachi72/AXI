@@ -1,23 +1,25 @@
 /* This is AXI slave module for AXI Lite */
 
+`include "axi_params.vh"
+
 module AXI_Slave ( // Here the input is coming from the master
     input s_clk,
     input rst,
     /* ----- Address Given by master ------- */
-    input [3:0] read_address, // 4-bit ready address
+    input [`ADDR_RANGE] read_address, // read address
     input AR_VALID,
     output reg AR_READY,
     /* ----- Data being read from slave ------- */
-    output reg [7:0] data_read,    // 8-bit data read
+    output reg [`DATA_RANGE] data_read,    // data read
     output reg R_VALID,
     input R_READY, // When master is ready to accept data
 
     /* ----- Address Given by master for write ------- */
-    input [3:0] write_address, // 4-bit write address
+    input [`ADDR_RANGE] write_address, // write address
     input AW_VALID,
     output reg AW_READY,
     /* ----- Data to be written to slave ------- */
-    input [7:0] write_data,    // 8-bit data to write
+    input [`DATA_RANGE] write_data,    // data to write
     input W_VALID,
     output reg W_READY,
     /* ----- Write response to master ------- */
@@ -26,7 +28,7 @@ module AXI_Slave ( // Here the input is coming from the master
     input B_READY // When master is ready to accept write response
 );
 
-    reg [7:0] memory [0:15]; // 16 x 8-bit memory
+    reg [`DATA_RANGE] memory [0:((1 << `ADDR_WIDTH) - 1)]; // Memory with size determined by address width
 
     /* Handling the read address and read data channels together */
     /* Takes only two clock cycles to read data from slave */
